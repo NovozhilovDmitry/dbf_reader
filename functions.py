@@ -1,16 +1,4 @@
 import dbfread
-import struct
-import re
-
-small_dbf_path = 'E:/sh130123.dbf'
-large_dbf_path = 'E:/SH061022.DBF'
-dbf_dict = {}
-# table = dbfread.DBF(small_dbf_path, load=True)
-# list_of_fields = []
-# for i in table.fields:
-#     first_point = str(i).find(',') - 1
-#     name = str(i).find('name=') + 6
-#     list_of_fields.append(str(i)[name:first_point])
 
 
 def get_headers_from_dbf(path_to_dbf_file):
@@ -45,15 +33,17 @@ def get_value_from_dbf(path_to_dbf_file, header_name):
     :param header_name: имя хедера
     :return: возвращает список по имени хедера
     """
+    values = []
+
     class Record(object):
         def __init__(self, items):
             for (name, value) in items:
                 setattr(self, name, value)
 
     for record in dbfread.DBF(path_to_dbf_file, recfactory=Record, lowernames=True):
-        print(eval('record.' + header_name))
-        # получаем все значения по хедеру
-        # записываем в отдельные списки?
+        # return str(eval('record.' + header_name))
+        values.append(str(eval('record.' + header_name)))
+    return values
 
 
 def lower_list(some_list):
@@ -66,9 +56,3 @@ def lower_list(some_list):
     for i in some_list:
         new_list.append(str(i).lower())
     return new_list
-
-
-# get_value_from_dbf(small_dbf_path, 'securityid')
-headers_list = lower_list(get_headers_from_dbf(small_dbf_path))
-for i in headers_list:
-    get_value_from_dbf(small_dbf_path, i)
