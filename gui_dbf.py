@@ -88,14 +88,13 @@ class Window(QMainWindow):
         dlg.setStandardButtons(QMessageBox.StandardButton.Ok)
         dlg.exec()
 
-    def thread_handle_files(self):
+    def thread_reading_dbf_file(self):
         """
-        done
-        :return:
+        :return: выполнение переданной функции в отдельном потоке
         """
         logger.info('Начато выполнение чтение DBF файла')
         worker = Worker(self.fn_read_dbf)  # функция, которая выполняется в потоке
-        worker.signals.result.connect(self.print_output)  # сообщение после завершения выполнения задачи
+        worker.signals.result.connect(self.print_output)  # сообщение после завершения выполнения функции
         worker.signals.finish.connect(self.finish_message)  # сообщение после завершения потока
         self.threadpool.start(worker)
 
@@ -127,7 +126,7 @@ class Window(QMainWindow):
         last_row = self.table.rowCount()
         self.table.insertRow(last_row)
 
-    def delete_some_row(self):
+    def delete_some_row_from_table(self):
         """
         :return: удаление выбранной пользователем строки в таблице
         """
@@ -139,9 +138,8 @@ class Window(QMainWindow):
                                  QMessageBox.StandardButton.Ok)
         else:
             msg = QMessageBox.question(self, 'Подтверждение удаления строки',
-                                       'Вы действительно хотите удалить 'f"строку <b style='color: red;'>{row + 1}</b> ?",
-                                       QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-            )
+                                       f"Вы действительно хотите удалить строку <b style='color: red;'>{row + 1}</b>?",
+                                       QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
             if msg == QMessageBox.StandardButton.Cancel:
                 logger.info(f'Пользователь отменил удаление строки {row + 1}')
                 return
@@ -150,6 +148,21 @@ class Window(QMainWindow):
                 self.table.removeRow(row)
             else:
                 logger.warning('Неизвестная ошибка. Не нажаты кнопки Ok/Cancel при подтвеждении удаления строки')
+
+    def thread_creating_dbf_file(self):
+        """
+        :return: выполнение переданной функции в отдельном потоке
+        """
+        logger.info('Начато выполнение чтение DBF файла')
+        worker = Worker(self.fn_create_dbf)  # функция, которая выполняется в потоке
+        worker.signals.result.connect(self.print_output)  # сообщение после завершения выполнения функции
+        worker.signals.finish.connect(self.finish_message)  # сообщение после завершения потока
+        self.threadpool.start(worker)
+
+    def fn_create_dbf(self):
+        pass
+
+
 
     def paths_validation(self):
         """
@@ -190,7 +203,7 @@ class Window(QMainWindow):
         self.btn_add_new_row = QPushButton('Добавить строку')
         self.btn_add_new_row.clicked.connect(self.add_row_to_table)
         self.btn_del_row = QPushButton('Удалить строку')
-        self.btn_del_row.clicked.connect(self.delete_some_row)
+        self.btn_del_row.clicked.connect(self.delete_some_row_from_table)
         self.main_layout.addWidget(self.label_path_to_file, 0, 0)
         self.main_layout.addWidget(self.lineedit_path_to_file, 0, 1)
         self.main_layout.addWidget(self.table, 1, 0, 1, 2)
@@ -248,4 +261,3 @@ if __name__ == '__main__':
     win = Window()
     win.show()
     sys.exit(app.exec())
-

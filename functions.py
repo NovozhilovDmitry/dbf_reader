@@ -3,7 +3,6 @@ import dbfread
 
 def get_headers_from_dbf(path_to_dbf_file):
     """
-    возможно нужно будет переделать, потому что на срезах не круто
     :param path_to_dbf_file: путь к DBF файлу
     :return: список с хедерами
     """
@@ -18,7 +17,6 @@ def get_headers_from_dbf(path_to_dbf_file):
 
 def get_len_of_table(path_to_dbf_file):
     """
-    закончено
     :param path_to_dbf_file: путь к DBF файлу
     :return: количество записей в файле
     """
@@ -28,7 +26,6 @@ def get_len_of_table(path_to_dbf_file):
 
 def get_value_from_dbf(path_to_dbf_file, header_name):
     """
-    закончено
     :param path_to_dbf_file: путь к DBF файлу
     :param header_name: имя хедера
     :return: возвращает список по имени хедера
@@ -41,15 +38,13 @@ def get_value_from_dbf(path_to_dbf_file, header_name):
                 setattr(self, name, value)
 
     for record in dbfread.DBF(path_to_dbf_file, recfactory=Record, lowernames=True):
-        # return str(eval('record.' + header_name))
         values.append(str(eval('record.' + header_name)))
     return values
 
 
 def lower_list(some_list):
     """
-    закончено
-    :param some_list: список, который будет преобразовываться для функции в нижний регистр
+    :param some_list: значения из списка, которые будут преобразовываться в нижний регистр
     :return: новый список со значениями в нижнем регистре
     """
     new_list = []
