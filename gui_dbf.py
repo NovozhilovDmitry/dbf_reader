@@ -16,11 +16,12 @@ from PyQt6.QtWidgets import (QMainWindow,
                              QMessageBox,
                              QTableWidget,
                              QTableWidgetItem,
+                             QCheckBox
                              )
 from functions import (get_len_of_table,
                        get_headers_from_dbf,
                        get_value_from_dbf,
-                       lower_list
+                       func_chunks_generators
                        )
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
@@ -105,18 +106,20 @@ class Window(QMainWindow):
         """
         start = datetime.now()
         path = self.lineedit_path_to_file.text()
-        count_rows = get_len_of_table(path)
-        self.table.setRowCount(count_rows)
         list_of_headers = get_headers_from_dbf(path)
-        self.table.setColumnCount(len(list_of_headers))
+        count_rows = get_len_of_table(path)
+        count_headers = len(list_of_headers)
+        self.table.setRowCount(count_rows)
+        self.table.setColumnCount(count_headers)
         self.table.setHorizontalHeaderLabels(list_of_headers)
-        #
-        # for column, record in enumerate(lower_list(list_of_headers)):
-        #     for row in range(0, count_rows):
-        #         value = get_value_from_dbf(path, record)
-        #         self.table.setItem(row, column, QTableWidgetItem(value[row]))
-
+        self.table.clear()
+        records = get_value_from_dbf(path)
+        new_list = func_chunks_generators(records, count_headers)
+        for row, list_records in enumerate(new_list):
+            for column in range(0, count_headers):
+                self.table.setItem(row, column, QTableWidgetItem(list_records[column]))
         self.table.setSortingEnabled(True)
+        self.table.horizontalHeader().setStretchLastSection(True)
         end = datetime.now()
         self.count_time = end - start
         return f'функция {traceback.extract_stack()[-1][2]} выполнена'
@@ -127,6 +130,7 @@ class Window(QMainWindow):
         """
         last_row = self.table.rowCount()
         self.table.insertRow(last_row)
+        logger.info(f'Добавлена строка {last_row + 1}')
 
     def delete_some_row_from_table(self):
         """
@@ -186,30 +190,51 @@ class Window(QMainWindow):
             logger.error('Ошибка валидации путей')
             return False
 
+    def checkbox_validation(self, check):
+        """
+        :param check: состояние чекбокса
+        :return: делает активной одну из кнопок
+        """
+        if check:
+            self.btn_reading_handler.setEnabled(True)
+            self.btn_creating_handler.setEnabled(False)
+        else:
+            self.btn_creating_handler.setEnabled(True)
+            self.btn_reading_handler.setEnabled(False)
+
     def header_layout(self):
         """
         :return: добавление виджетов в верхнюю часть интерфейса на главном окне
         """
         self.label_path_to_file = QLabel('Путь к файлу')
+        self.label_checkbox = QLabel('Переключатель между чтением DBF файла и созданием нового DBF файла')
         self.lineedit_path_to_file = QLineEdit()
         self.lineedit_path_to_file.setPlaceholderText('Укажите путь к DBF файлу')
         self.btn_set_path = self.lineedit_path_to_file.addAction(QIcon(self.btn_icon),
                                                                  QLineEdit.ActionPosition.TrailingPosition)
         self.btn_set_path.triggered.connect(self.get_path)
         self.table = QTableWidget()
-        self.btn_handler = QPushButton('Загрузить данные из таблицы в файл DBF')
-        # self.btn_handler.clicked.connect(self.thread_reading_dbf_file)
-        self.btn_handler.clicked.connect(self.fn_read_dbf)
+        self.checkbox_switcher = QCheckBox()
+        self.checkbox_switcher.stateChanged.connect(self.checkbox_validation)
         self.btn_add_new_row = QPushButton('Добавить строку')
         self.btn_add_new_row.clicked.connect(self.add_row_to_table)
         self.btn_del_row = QPushButton('Удалить строку')
         self.btn_del_row.clicked.connect(self.delete_some_row_from_table)
+        self.btn_reading_handler = QPushButton('Загрузить данные из DBF файла в таблицу')
+        self.btn_reading_handler.clicked.connect(self.thread_reading_dbf_file)
+        self.btn_creating_handler = QPushButton('Загрузить данные из таблицы в DBF файл')
+        self.btn_creating_handler.clicked.connect(self.thread_creating_dbf_file)
+        self.checkbox_switcher.setChecked(True)
+        self.btn_creating_handler.setEnabled(False)
         self.main_layout.addWidget(self.label_path_to_file, 0, 0)
         self.main_layout.addWidget(self.lineedit_path_to_file, 0, 1)
-        self.main_layout.addWidget(self.table, 1, 0, 1, 2)
-        self.main_layout.addWidget(self.btn_handler, 2, 0, 1, 2)
-        self.main_layout.addWidget(self.btn_add_new_row, 3, 0)
-        self.main_layout.addWidget(self.btn_del_row, 3, 1)
+        self.main_layout.addWidget(self.checkbox_switcher, 1, 0)
+        self.main_layout.addWidget(self.label_checkbox, 1, 1)
+        self.main_layout.addWidget(self.btn_add_new_row, 2, 0)
+        self.main_layout.addWidget(self.btn_del_row, 2, 1)
+        self.main_layout.addWidget(self.table, 3, 0, 1, 2)
+        self.main_layout.addWidget(self.btn_reading_handler, 4, 0, 1, 2)
+        self.main_layout.addWidget(self.btn_creating_handler, 5, 0, 1, 2)
 
     def get_path(self):
         """
