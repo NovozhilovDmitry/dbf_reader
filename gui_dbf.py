@@ -110,10 +110,12 @@ class Window(QMainWindow):
         list_of_headers = get_headers_from_dbf(path)
         self.table.setColumnCount(len(list_of_headers))
         self.table.setHorizontalHeaderLabels(list_of_headers)
-        for column, record in enumerate(lower_list(list_of_headers)):
-            for row in range(0, count_rows):
-                value = get_value_from_dbf(path, record)
-                self.table.setItem(row, column, QTableWidgetItem(value[row]))
+        #
+        # for column, record in enumerate(lower_list(list_of_headers)):
+        #     for row in range(0, count_rows):
+        #         value = get_value_from_dbf(path, record)
+        #         self.table.setItem(row, column, QTableWidgetItem(value[row]))
+
         self.table.setSortingEnabled(True)
         end = datetime.now()
         self.count_time = end - start

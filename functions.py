@@ -1,4 +1,4 @@
-import dbfread
+import dbf
 
 
 def get_headers_from_dbf(path_to_dbf_file):
@@ -6,13 +6,11 @@ def get_headers_from_dbf(path_to_dbf_file):
     :param path_to_dbf_file: путь к DBF файлу
     :return: список с хедерами
     """
-    table = dbfread.DBF(path_to_dbf_file, load=True)
-    list_of_fields = []
-    for i in table.fields:
-        first_point = str(i).find(',') - 1
-        name = str(i).find('name=') + 6
-        list_of_fields.append(str(i)[name:first_point])
-    return list_of_fields
+    header_names = []
+    with dbf.Table(path_to_dbf_file) as table:
+        for i in table.field_names:
+            header_names.append(i)
+    return header_names
 
 
 def get_len_of_table(path_to_dbf_file):
@@ -20,12 +18,13 @@ def get_len_of_table(path_to_dbf_file):
     :param path_to_dbf_file: путь к DBF файлу
     :return: количество записей в файле
     """
-    table = dbfread.DBF(path_to_dbf_file, load=True)
-    return len(table)
+    with dbf.Table(path_to_dbf_file) as table:
+        return table.field_count
 
 
 def get_value_from_dbf(path_to_dbf_file, header_name):
     """
+    исправить на другую библиотеку
     :param path_to_dbf_file: путь к DBF файлу
     :param header_name: имя хедера
     :return: возвращает список по имени хедера
@@ -53,8 +52,6 @@ def lower_list(some_list):
     return new_list
 
 
-
-# import dbf
 
 
 # table = dbf.Table('sh130123.dbf')
