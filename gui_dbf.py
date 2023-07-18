@@ -162,8 +162,6 @@ class Window(QMainWindow):
     def fn_create_dbf(self):
         pass
 
-
-
     def paths_validation(self):
         """
         :return: проверяет корректность путей. Если путь не найден, то выводится окно с ошибкой
@@ -198,7 +196,7 @@ class Window(QMainWindow):
         self.btn_set_path.triggered.connect(self.get_path)
         self.table = QTableWidget()
         self.btn_handler = QPushButton('Загрузить данные из таблицы в файл DBF')
-        # self.btn_handler.clicked.connect(self.thread_handle_files)
+        # self.btn_handler.clicked.connect(self.thread_reading_dbf_file)
         self.btn_handler.clicked.connect(self.fn_read_dbf)
         self.btn_add_new_row = QPushButton('Добавить строку')
         self.btn_add_new_row.clicked.connect(self.add_row_to_table)
