@@ -161,7 +161,6 @@ class ReadingWindow(QMainWindow):
         """
         last_row = self.table.rowCount()
         self.table.insertRow(last_row)
-        logger.info(f'Добавлена строка {last_row + 1}')
 
     def delete_row_from_table(self):
         """
@@ -170,18 +169,17 @@ class ReadingWindow(QMainWindow):
         row = self.table.currentRow()
         if row == 0:
             QMessageBox.warning(self, 'ВНИМАНИЕ!', 'ПЕРВУЮ СТРОКУ УДАЛЯТЬ НЕЛЬЗЯ')
+            logger.warning('Пользователь попытался удалить первую строку')
         elif row == -1:
             QMessageBox.question(self, 'Сообщение', "Выберите строку, которую вы хотите удалить",
                                  QMessageBox.StandardButton.Ok)
         else:
-            msg = QMessageBox.question(self, 'Подтверждение удаления строки',
+            msg = QMessageBox.question(self, 'Подтверждение удаления',
                                        f"Вы действительно хотите удалить строку <b style='color: red;'>{row + 1}</b>?",
                                        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
             if msg == QMessageBox.StandardButton.Cancel:
-                logger.info(f'Пользователь отменил удаление строки {row + 1}')
                 return
             elif msg == QMessageBox.StandardButton.Ok:
-                logger.info(f'Удалена строка {row + 1}')
                 self.table.removeRow(row)
             else:
                 logger.warning('Неизвестная ошибка. Не нажаты кнопки Ok/Cancel при подтвеждении удаления строки')
@@ -322,16 +320,13 @@ class CreatingWindow(QMainWindow):
         """
         last_row = self.table.rowCount()
         self.table.insertRow(last_row)
-        logger.info(f'Добавлена строка {last_row + 1}')
 
     def delete_row_from_table(self):
         """
         :return: удаление выбранной пользователем строки в таблице
         """
         row = self.table.currentRow()
-        if row == 0:
-            QMessageBox.warning(self, 'ВНИМАНИЕ!', 'ПЕРВУЮ СТРОКУ УДАЛЯТЬ НЕЛЬЗЯ')
-        elif row == -1:
+        if row == -1:
             QMessageBox.question(self, 'Сообщение', "Выберите строку, которую вы хотите удалить",
                                  QMessageBox.StandardButton.Ok)
         else:
@@ -339,13 +334,37 @@ class CreatingWindow(QMainWindow):
                                        f"Вы действительно хотите удалить строку <b style='color: red;'>{row + 1}</b>?",
                                        QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
             if msg == QMessageBox.StandardButton.Cancel:
-                logger.info(f'Пользователь отменил удаление строки {row + 1}')
                 return
             elif msg == QMessageBox.StandardButton.Ok:
-                logger.info(f'Удалена строка {row + 1}')
                 self.table.removeRow(row)
             else:
                 logger.warning('Неизвестная ошибка. Не нажаты кнопки Ok/Cancel при подтвеждении удаления строки')
+
+    def add_column_to_table(self):
+        """
+        :return: добавить новый столбец в таблицу
+        """
+        last_column = self.table.columnCount()
+        self.table.insertColumn(last_column)
+
+    def delete_column_from_table(self):
+        """
+        :return: удаление выбранного пользователем столбца в таблице
+        """
+        column = self.table.currentColumn()
+        if column == -1:
+            QMessageBox.question(self, 'Сообщение', "Выберите столбец, который вы хотите удалить",
+                                 QMessageBox.StandardButton.Ok)
+        else:
+            msg = QMessageBox.question(self, 'Подтверждение удаления',
+                                       f"Вы действительно хотите удалить столбец <b style='color: red;'>{column + 1}</b>?",
+                                       QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
+            if msg == QMessageBox.StandardButton.Cancel:
+                return
+            elif msg == QMessageBox.StandardButton.Ok:
+                self.table.removeColumn(column)
+            else:
+                logger.warning('Неизвестная ошибка. Не нажаты кнопки Ok/Cancel при подтвеждении удаления')
 
     def thread_creating_dbf_file(self):
         """
@@ -358,11 +377,7 @@ class CreatingWindow(QMainWindow):
         self.threadpool.start(worker)
 
     def fn_create_dbf(self):
-        # нужно добавить кнопки с добавлением и удалением столбцов
-        # в первой строке указывать название хедеров (в ридми внести об этом инфу)
-        # нужно соблюдать определенную структуру имен - посмотреть для дбф под цб
-        # может сделать при входе маленькое окно с 2 кнопками - чтением и созданием файлов и уже дальше
-        # отдельно два нормальных окна?
+        # в первой строке указывать название хедеров с типами данных (в ридми внести об этом инфу)
         start = datetime.now()
         end = datetime.now()
         self.count_time = end - start
@@ -393,13 +408,11 @@ class CreatingWindow(QMainWindow):
         self.btn_add_new_row = QPushButton('Добавить строку')
         self.btn_add_new_row.clicked.connect(self.add_row_to_table)
         self.btn_add_new_column = QPushButton('Добавить столбец')
-        # self.btn_add_new_column.clicked.connect(self.)
-
+        self.btn_add_new_column.clicked.connect(self.add_column_to_table)
         self.btn_del_row = QPushButton('Удалить строку')
         self.btn_del_row.clicked.connect(self.delete_row_from_table)
         self.btn_del_column = QPushButton('Удалить столбец')
-        # self.btn_del_column.clicked.connect(self.)
-
+        self.btn_del_column.clicked.connect(self.delete_column_from_table)
         self.btn_creating_handler = QPushButton('Загрузить данные из таблицы в DBF файл')
         self.btn_creating_handler.clicked.connect(self.thread_creating_dbf_file)
         self.main_layout.addWidget(self.lineedit_create_dbf, 0, 0, 1, 2)
