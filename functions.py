@@ -1,4 +1,5 @@
 import dbf
+from my_logging import logger
 
 
 def get_headers_from_dbf(path_to_dbf_file):
@@ -32,7 +33,7 @@ def get_value_from_dbf(path_to_dbf_file):
         try:
             for records in table:
                 for record in records:
-                    big_list.append(str(record))
+                    big_list.append(str(record).strip())
         except:
             pass
     return big_list
@@ -47,6 +48,10 @@ def func_chunks_generators(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i: i + n]
 
+
+if __name__ == '__main__':
+    logger.info(f'Запущен файл {__file__}')
+    pass
 
 # creating dbf
 # table = dbf.Table('temp130123.dbf', 'TRADEDATE D; PRICEDATE D; SECURITYID C(12); REGNUMBER C(20); '
