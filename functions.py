@@ -1,5 +1,25 @@
 import dbf
-from my_logging import logger
+import json
+import re
+
+
+def write_data_to_json_file(path_to_file, data):
+    """
+    :param path_to_file: путь, где будет создан файл
+    :param data: данные, которые будут записаны в файл
+    :return: записывает в файл
+    """
+    with open(path_to_file, 'w') as json_file:
+        json.dump(data, json_file)
+
+
+def get_result_from_json(path_to_file):
+    """
+    :param path_to_file: путь к json файлу
+    :return: структуру из json файла
+    """
+    with open(path_to_file, 'r') as json_file:
+        return json.load(json_file)
 
 
 def get_headers_from_dbf(path_to_dbf_file):
@@ -49,16 +69,34 @@ def func_chunks_generators(lst, n):
         yield lst[i: i + n]
 
 
-if __name__ == '__main__':
-    logger.info(f'Запущен файл {__file__}')
-    pass
+def header_dbf(path_to_dbf_file):
+    """
+    :param path_to_dbf_file: путь к DBF файлу
+    :return: список хедеров с типами данных из DBF файла
+    """
+    table = dbf.Table(path_to_dbf_file)
+    data = str(table)
+    start = data.find('--Fields--') + 10
+    temp_list = [re.sub(r'\s{2,}', '', i) for i in data[start:].split('b') if re.search(r'[A-Z]', i)]
+    header_with_type = []
+    for i in temp_list:
+        symbol = i.find("'", 1)
+        header_with_type.append(i[1:symbol])
+    return header_with_type
 
-# creating dbf
-# table = dbf.Table('temp130123.dbf', 'TRADEDATE D; PRICEDATE D; SECURITYID C(12); REGNUMBER C(20); '
-#                                     'FACEVALUE N(20,4); WAPRICE N(20,4); MATDATE D; CURRENCY C(3); MARKET C(4)')
-# table.open(mode=dbf.READ_WRITE)
-# data = ((dbf.Date(2023, 1, 13), dbf.Date(2023, 1, 13), 'RU000A101665', 'RU35014NJG0', 700.0, 97.47, dbf.Date(2024, 1, 14), 'RUB', ''),
-#         (dbf.Date(2023, 1, 13), dbf.Date(2023, 1, 13), 'RU000A1014S3', '4B02-01-12414-F-001P', 800.0, 97.97, dbf.Date(2025, 1, 15), 'RUB', ''),
-#         (dbf.Date(2023, 1, 13), dbf.Date(2023, 1, 13), 'RU000A101RB4', 'RU34015BEL0', 860.0, 101.47, dbf.Date(2026, 1, 16), 'RUB', ''))
-# for i in data:
-#     table.append(i)
+
+def save_to_dbf(filename, headers_with_types, data):
+    """
+    :param filename: имя файла с расширением (можно указать в том числе путь, где будет создан файл)
+    :param headers_with_types: список полей с их типами данных
+    :param data: кортеж с кортежами записей
+    :return: файл DBF
+    """
+    table = dbf.Table(filename, headers_with_types)
+    table.open(mode=dbf.READ_WRITE)
+    for i in data:
+        table.append(i)
+
+
+if __name__ == '__main__':
+    pass

@@ -7,7 +7,6 @@ from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import QRunnable, QThreadPool, QSettings, QObject, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (QMainWindow,
                              QWidget,
-                             QLabel,
                              QGridLayout,
                              QLineEdit,
                              QPushButton,
@@ -15,15 +14,18 @@ from PyQt6.QtWidgets import (QMainWindow,
                              QMessageBox,
                              QTableWidget,
                              QTableWidgetItem,
-                             QApplication
-                             )
+                             QApplication)
 from functions import (get_len_of_table,
                        get_headers_from_dbf,
                        get_value_from_dbf,
-                       func_chunks_generators
-                       )
+                       func_chunks_generators,
+                       write_data_to_json_file,
+                       get_result_from_json,
+                       header_dbf,
+                       save_to_dbf)
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
+JSONFILENAME = 'headers.json'
 
 
 class WorkerSignals(QObject):
@@ -73,6 +75,7 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.btn_create_dbf, 1, 0)
         self.layout.setLayout(self.main_layout)
         self.setCentralWidget(self.layout)
+        self.check_json_file()
 
     def show_reading_window(self):
         if self.reading_window is None:
@@ -83,6 +86,28 @@ class MainWindow(QMainWindow):
         if self.creating_window is None:
             self.creating_window = CreatingWindow()
         self.creating_window.show()
+
+    def check_json_file(self):
+        """
+        :return: проверяет json-файл. Создает файл, если его нет. Если он есть, то проверяет что в нем
+        """
+        headers_list = {
+            'TRADEDATE': 'D',
+            'PRICEDATE': 'D',
+            'SECURITYID': 'C(12)',
+            'REGNUMBER': 'C(20)',
+            'FACEVALUE': 'N(20,4)',
+            'WAPRICE': 'N(20,4)',
+            'MATDATE': 'D',
+            'CURRENCY': 'C(3)',
+            'MARKET': 'C(4)'
+        }
+        if pathlib.Path.exists(pathlib.Path.cwd().joinpath(JSONFILENAME)):
+            headers_with_data_types = get_result_from_json(pathlib.Path.cwd().joinpath(JSONFILENAME))
+        else:
+            write_data_to_json_file(pathlib.Path.cwd().joinpath(JSONFILENAME), headers_list)
+            headers_with_data_types = get_result_from_json(pathlib.Path.cwd().joinpath(JSONFILENAME))
+        return headers_with_data_types
 
     def closeEvent(self, event):
         app.closeAllWindows()
@@ -124,11 +149,19 @@ class ReadingWindow(QMainWindow):
         """
         :return: выполнение переданной функции в отдельном потоке
         """
-        logger.info('Начато чтение DBF файла')
-        worker = Worker(self.fn_read_dbf)
-        worker.signals.result.connect(self.print_output)
-        worker.signals.finish.connect(self.finish_message)
-        self.threadpool.start(worker)
+        path = self.lineedit_open_dbf.text()
+        if pathlib.Path(path).exists():
+            logger.info('Начато чтение DBF файла')
+            worker = Worker(self.fn_read_dbf)
+            worker.signals.result.connect(self.print_output)
+            worker.signals.finish.connect(self.finish_message)
+            self.threadpool.start(worker)
+        else:
+            dlg = QMessageBox()
+            dlg.setWindowTitle('Ошибка валидации путей')
+            dlg.setText('Проверьте корректность введенного пути')
+            dlg.exec()
+            logger.error('Ошибка валидации путей')
 
     def fn_read_dbf(self, progress_callback):
         """
@@ -153,6 +186,7 @@ class ReadingWindow(QMainWindow):
         self.table.horizontalHeader().setStretchLastSection(True)
         end = datetime.now()
         self.count_time = end - start
+        logger.info(f'В файле присутствуют следующие поля: {header_dbf(path)}')
         return f'функция {traceback.extract_stack()[-1][2]} выполнена'
 
     def add_row_to_table(self):
@@ -183,28 +217,6 @@ class ReadingWindow(QMainWindow):
                 self.table.removeRow(row)
             else:
                 logger.warning('Неизвестная ошибка. Не нажаты кнопки Ok/Cancel при подтвеждении удаления строки')
-
-    def paths_validation(self):
-        """
-        :return: проверка корректности введенных путей. Если путь не найден, то выводится окно с ошибкой
-        """
-        full_str_error = []
-        if not pathlib.Path(self.lineedit_open_dbf.text()).exists():
-            full_str_error.append(self.lineedit_open_dbf.text())
-        if len(full_str_error) == 0:
-            logger.info('Успешная валидация путей')
-            return True
-        if len(full_str_error) > 0:
-            error_message = 'Проверьте корректность следующих введенных путей:\n'
-            for i in full_str_error:
-                error_message = error_message + i + '\n'
-            dlg = QMessageBox()
-            dlg.setWindowTitle('Ошибка валидации путей')
-            dlg.setText(error_message)
-            dlg.setStandardButtons(QMessageBox.StandardButton.Close)
-            dlg.exec()
-            logger.error('Ошибка валидации путей')
-            return False
 
     def header_layout(self):
         """
@@ -243,11 +255,12 @@ class ReadingWindow(QMainWindow):
             get_dir = 'Путь не выбран'
         self.lineedit_open_dbf.setText(get_dir)
 
-    def save_dbf(self):
-        # сделать кнопку, которая будет собирать из таблицы записи для сохранения
-        # из таблицы table.DBF вытащить к названиям полей их тип данных
-        # записать в файл с таким же именем, а старый файл переименовать
-        pass
+    def save_dbf(self, progress_callback):
+        data = ()
+        path = pathlib.Path(self.lineedit_open_dbf.text())  # сделать из текстового поля путь pathlib
+        filename = path.name
+        path.rename(path.parents[0].joinpath('old_' + filename))  # переименовать старый файл в "old_старое имя"
+        # save_to_dbf(path, header_dbf(path), data)
 
     def get_settings(self):
         """
@@ -296,6 +309,8 @@ class CreatingWindow(QMainWindow):
         self.layout.setLayout(self.main_layout)
         self.setCentralWidget(self.layout)
         self.get_settings()
+        mainwindow = MainWindow()
+        self.data_from_json = mainwindow.check_json_file()
 
     def print_output(self, s):
         """
@@ -370,15 +385,33 @@ class CreatingWindow(QMainWindow):
         """
         :return: выполнение переданной функции в отдельном потоке
         """
-        logger.info('Начато создание DBF файла')
-        worker = Worker(self.fn_create_dbf)
-        worker.signals.result.connect(self.print_output)
-        worker.signals.finish.connect(self.finish_message)
-        self.threadpool.start(worker)
+        path = self.lineedit_create_dbf.text()
+        if pathlib.Path(path).exists():
+            logger.info('Начато создание DBF файла')
+            worker = Worker(self.fn_create_dbf)
+            worker.signals.result.connect(self.print_output)
+            worker.signals.finish.connect(self.finish_message)
+            self.threadpool.start(worker)
+        else:
+            dlg = QMessageBox()
+            dlg.setWindowTitle('Ошибка валидации путей')
+            dlg.setText('Проверьте корректность введенного пути')
+            dlg.exec()
+            logger.error('Ошибка валидации путей')
 
-    def fn_create_dbf(self):
-        # в первой строке указывать название хедеров с типами данных (в ридми внести об этом инфу)
+    def fn_create_dbf(self, progress_callback):
         start = datetime.now()
+        path = self.lineedit_create_dbf.text()
+        list_of_headers = self.data_from_json
+        print(type(list_of_headers))
+        count_headers = len(list_of_headers)
+        self.table.clear()
+        self.table.setRowCount(1)
+        self.table.setColumnCount(count_headers)
+        self.table.setHorizontalHeaderLabels(list_of_headers)
+        # for i, (header_value, header_type) in enumerate(list_of_headers.items()):  # перебор записей в словаре
+        #     print(header_value + ' ', header_type)  # хедер + тип данных
+        #     self.table.setItem(0, i, QTableWidgetItem(header_value + ' ' + header_type))
         end = datetime.now()
         self.count_time = end - start
         return f'функция {traceback.extract_stack()[-1][2]} выполнена'
@@ -422,28 +455,6 @@ class CreatingWindow(QMainWindow):
         self.main_layout.addWidget(self.btn_del_column, 2, 1)
         self.main_layout.addWidget(self.table, 3, 0, 1, 2)
         self.main_layout.addWidget(self.btn_creating_handler, 4, 0, 1, 2)
-
-    def paths_validation(self):
-        """
-        :return: проверка корректности введенных путей. Если путь не найден, то выводится окно с ошибкой
-        """
-        full_str_error = []
-        if not pathlib.Path(self.lineedit_create_dbf.text()).exists():
-            full_str_error.append(self.lineedit_create_dbf.text())
-        if len(full_str_error) == 0:
-            logger.info('Успешная валидация путей')
-            return True
-        if len(full_str_error) > 0:
-            error_message = 'Проверьте корректность следующих введенных путей:\n'
-            for i in full_str_error:
-                error_message = error_message + i + '\n'
-            dlg = QMessageBox()
-            dlg.setWindowTitle('Ошибка валидации путей')
-            dlg.setText(error_message)
-            dlg.setStandardButtons(QMessageBox.StandardButton.Close)
-            dlg.exec()
-            logger.error('Ошибка валидации путей')
-            return False
 
     def get_settings(self):
         """
