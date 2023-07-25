@@ -1,6 +1,8 @@
 import dbf
 import json
 import re
+import pathlib
+import shutil
 
 
 def write_data_to_json_file(path_to_file, data):
@@ -89,13 +91,23 @@ def save_to_dbf(filename, headers_with_types, data):
     """
     :param filename: имя файла с расширением (можно указать в том числе путь, где будет создан файл)
     :param headers_with_types: список полей с их типами данных
-    :param data: кортеж с кортежами записей
+    :param data: список с вложенными списками записей
     :return: файл DBF
     """
     table = dbf.Table(filename, headers_with_types)
     table.open(mode=dbf.READ_WRITE)
     for i in data:
-        table.append(i)
+        table.append(tuple(i))
+
+
+def make_copy_file(path_from):
+    """
+    :param path_from: путь к файлу в виде строки, которая преобразовывается в путь pathlib
+    :return: копия файла с именем old_в начале
+    """
+    pathlib_path = pathlib.Path(path_from)
+    filename = pathlib_path.name
+    shutil.copy(pathlib_path, pathlib_path.parents[0].joinpath('old_' + filename))
 
 
 if __name__ == '__main__':

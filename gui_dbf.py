@@ -2,6 +2,8 @@ from my_logging import logger
 import sys
 import traceback
 import pathlib
+import re
+import datetime as DT
 from datetime import datetime
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import QRunnable, QThreadPool, QSettings, QObject, pyqtSignal, pyqtSlot
@@ -22,7 +24,8 @@ from functions import (get_len_of_table,
                        write_data_to_json_file,
                        get_result_from_json,
                        header_dbf,
-                       save_to_dbf)
+                       save_to_dbf,
+                       make_copy_file)
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
 JSONFILENAME = 'headers.json'
@@ -78,11 +81,17 @@ class MainWindow(QMainWindow):
         self.check_json_file()
 
     def show_reading_window(self):
+        """
+        :return: показ окна редактирования DBF файла по кнопке
+        """
         if self.reading_window is None:
             self.reading_window = ReadingWindow()
         self.reading_window.show()
 
     def show_creating_window(self):
+        """
+        :return: показ окна создания DBF файла по кнопке
+        """
         if self.creating_window is None:
             self.creating_window = CreatingWindow()
         self.creating_window.show()
@@ -110,6 +119,10 @@ class MainWindow(QMainWindow):
         return headers_with_data_types
 
     def closeEvent(self, event):
+        """
+        :param event: передается событие закрытия окна
+        :return: закрывает все окна, которые в данный момент открыты
+        """
         app.closeAllWindows()
 
 
@@ -135,6 +148,20 @@ class ReadingWindow(QMainWindow):
         """
         logger.info(s)
 
+    def information_window(self):
+        """
+        :return: после завершения функции чтения файла выводится окно с сообщением и данными о затраченном времени
+        """
+        dlg = QMessageBox()
+        dlg.setWindowTitle('DBF reader')
+        text = f"""Будьте внимательны при заполнении полей с датами.
+Даты заполняются в формате YYYY-MM-DD.
+Функция выполнена за {self.count_time}
+"""
+        dlg.setText(text)
+        dlg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        dlg.exec()
+
     def finish_message(self):
         """
         :return: после завершения функции в отдельном потоке выводится окно с данными о затраченном времени
@@ -154,7 +181,7 @@ class ReadingWindow(QMainWindow):
             logger.info('Начато чтение DBF файла')
             worker = Worker(self.fn_read_dbf)
             worker.signals.result.connect(self.print_output)
-            worker.signals.finish.connect(self.finish_message)
+            worker.signals.finish.connect(self.information_window)
             self.threadpool.start(worker)
         else:
             dlg = QMessageBox()
@@ -166,27 +193,63 @@ class ReadingWindow(QMainWindow):
     def fn_read_dbf(self, progress_callback):
         """
         :param progress_callback: результат выполнения функции в потоке
-        :return: выполненная функция
+        :return: выполненная функция чтения DBF файла
         """
         start = datetime.now()
         path = self.lineedit_open_dbf.text()
         list_of_headers = get_headers_from_dbf(path)
         count_rows = get_len_of_table(path)
-        count_headers = len(list_of_headers)
+        self.count_headers = len(list_of_headers)
         self.table.clear()
         self.table.setRowCount(count_rows)
-        self.table.setColumnCount(count_headers)
+        self.table.setColumnCount(self.count_headers)
         self.table.setHorizontalHeaderLabels(list_of_headers)
         records = get_value_from_dbf(path)
-        new_list = func_chunks_generators(records, count_headers)
+        new_list = func_chunks_generators(records, self.count_headers)
         for row, list_records in enumerate(new_list):
-            for column in range(0, count_headers):
+            for column in range(0, self.count_headers):
                 self.table.setItem(row, column, QTableWidgetItem(list_records[column]))
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
         end = datetime.now()
         self.count_time = end - start
         logger.info(f'В файле присутствуют следующие поля: {header_dbf(path)}')
+        self.btn_save_dbf.setEnabled(True)
+        return f'функция {traceback.extract_stack()[-1][2]} выполнена'
+
+    def thread_creating_dbf_file(self):
+        """
+        :return: выполнение переданной функции в отдельном потоке
+        """
+        logger.info('Начато сохранение DBF файла')
+        worker = Worker(self.fn_save_dbf)
+        worker.signals.result.connect(self.print_output)
+        worker.signals.finish.connect(self.finish_message)
+        self.threadpool.start(worker)
+
+    def fn_save_dbf(self, progress_callback):
+        """
+        :param progress_callback: результат выполнения функции в потоке
+        :return: выполненная функция сохранения записей из таблицы в DBF файл
+        """
+        start = datetime.now()
+        pattern = r'\d{4}[-/.]\d{2}[-/.]\d{2}'
+        path = self.lineedit_open_dbf.text()
+        temp_list = []
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item is None:
+                    continue
+                if re.search(pattern, item.text()):
+                    temp_list.append(DT.datetime.strptime(item.text(), '%Y-%m-%d').date())
+                else:
+                    temp_list.append(item.text())
+        data = func_chunks_generators(temp_list, self.count_headers)
+        make_copy_file(path)
+        save_to_dbf(path, header_dbf(path), data)
+        end = datetime.now()
+        self.count_time = end - start
         return f'функция {traceback.extract_stack()[-1][2]} выполнена'
 
     def add_row_to_table(self):
@@ -236,7 +299,8 @@ class ReadingWindow(QMainWindow):
         self.btn_reading_handler = QPushButton('Загрузить данные из DBF файла в таблицу')
         self.btn_reading_handler.clicked.connect(self.thread_reading_dbf_file)
         self.btn_save_dbf = QPushButton('Сохранить файл')
-        self.btn_save_dbf.clicked.connect(self.save_dbf)
+        self.btn_save_dbf.clicked.connect(self.thread_creating_dbf_file)
+        self.btn_save_dbf.setEnabled(False)
         self.main_layout.addWidget(self.lineedit_open_dbf, 0, 0, 1, 2)
         self.main_layout.addWidget(self.btn_reading_handler, 1, 0)
         self.main_layout.addWidget(self.btn_save_dbf, 1, 1)
@@ -254,13 +318,6 @@ class ReadingWindow(QMainWindow):
         else:
             get_dir = 'Путь не выбран'
         self.lineedit_open_dbf.setText(get_dir)
-
-    def save_dbf(self, progress_callback):
-        data = ()
-        path = pathlib.Path(self.lineedit_open_dbf.text())  # сделать из текстового поля путь pathlib
-        filename = path.name
-        path.rename(path.parents[0].joinpath('old_' + filename))  # переименовать старый файл в "old_старое имя"
-        # save_to_dbf(path, header_dbf(path), data)
 
     def get_settings(self):
         """
