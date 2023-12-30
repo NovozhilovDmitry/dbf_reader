@@ -11,3 +11,7 @@ handler.setFormatter(formatter)
 console_output.setFormatter(formatter)
 logger.addHandler(handler)
 logger.addHandler(console_output)
+
+
+if __name__ == '__main__':
+    pass
