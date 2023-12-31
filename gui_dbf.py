@@ -1,17 +1,6 @@
 from my_logging import logger
 import sys
-import traceback
-import pathlib
-import re
-import datetime as DT
-from datetime import datetime
-from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtCore import QThreadPool, QSettings
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QGridLayout, QLineEdit, QPushButton, QFileDialog, QMessageBox,
-                             QTableWidget, QTableWidgetItem, QApplication)
-from functions import (get_len_of_table, get_headers_from_dbf, get_value_from_dbf, func_chunks_generators,
-                       write_data_to_json_file, get_result_from_json, header_dbf, save_to_dbf, make_copy_file)
-from classes import Worker
+from PyQt6.QtWidgets import QMainWindow, QWidget, QGridLayout, QPushButton, QApplication
 from dbf_reading import ReadingWindow
 from dbf_creating import CreatingWindow
 
