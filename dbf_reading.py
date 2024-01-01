@@ -1,5 +1,4 @@
 from my_logging import logger
-import traceback
 import pathlib
 import re
 import datetime as DT
@@ -46,9 +45,7 @@ class ReadingWindow(QMainWindow):
         dlg = QMessageBox()
         dlg.setWindowTitle('DBF reader')
         text = f"""Будьте внимательны при заполнении полей с датами.
-Даты заполняются в формате YYYY-MM-DD.
-Функция выполнена за {self.count_time}
-"""
+Функция выполнена за {self.count_time}"""
         dlg.setText(text)
         dlg.setStandardButtons(QMessageBox.StandardButton.Ok)
         dlg.exec()
@@ -106,7 +103,7 @@ class ReadingWindow(QMainWindow):
         self.count_time = end - start
         logger.info(f'В файле присутствуют следующие поля: {header_dbf(path)}')
         self.btn_save_dbf.setEnabled(True)
-        return f'функция "Чтение dbf" выполнена'
+        return f'Чтение dbf выполнено успешно'
 
     def thread_creating_dbf_file(self):
         """
@@ -141,7 +138,7 @@ class ReadingWindow(QMainWindow):
         save_to_dbf(path, header_dbf(path), data)
         end = datetime.now()
         self.count_time = end - start
-        return f'функция {traceback.extract_stack()[-1][2]} выполнена'
+        return f'Сохранение dbf выполнено успешно'
 
     def add_row_to_table(self):
         """

@@ -1,5 +1,4 @@
 from my_logging import logger
-import traceback
 import pathlib
 from datetime import datetime
 from PyQt6.QtGui import QPixmap, QIcon
@@ -155,7 +154,7 @@ class CreatingWindow(QMainWindow):
         #     self.table.setItem(0, i, QTableWidgetItem(header_value + ' ' + header_type))
         end = datetime.now()
         self.count_time = end - start
-        return f'функция {traceback.extract_stack()[-1][2]} выполнена'
+        return f'Создание dbf выполнено успешно'
 
     def get_directory_for_create_dbf(self):
         """
